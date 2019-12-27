@@ -35,9 +35,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define TRUE 1
-#define FALSE 0
-#define __DEBUG
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/

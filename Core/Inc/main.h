@@ -75,7 +75,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 #define TRUE 1
 #define FALSE 0
-#define __DEBUG
+//#define __DEBUG
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

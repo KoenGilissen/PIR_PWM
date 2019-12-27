@@ -36,7 +36,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define __DEBUG
 #define BUFSIZE 90
 #define ADC_THRESHOLD	3000
 
@@ -76,7 +75,7 @@ static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 void uint32tToString(uint32_t reg, char *str);
 void printRegisterToBinary(uint32_t registerToPrint);
-void reset_rtc(void);
+static void reset_rtc(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -95,9 +94,8 @@ finiteState currentState = idle;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	uint32_t adcValue = 0;
-	registerBinairy[32] = '\0';
-
+  registerBinairy[32] = '\0';
+  uint32_t adcValue = 0;
   /* USER CODE END 1 */
   
 
@@ -107,14 +105,12 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -423,55 +419,45 @@ static void MX_RTC_Init(void)
 
 }
 
-/*
- Calendar initialization and configuration
-To program the initial time and date calendar values, including the time format and the
-prescaler configuration, the following sequence is required:
-1. Set INIT bit (7) to 1 in the RTC_ISR register to enter initialization mode. In this mode, the
-calendar counter is stopped and its value can be updated.
-2. Poll INITF bit (6) of in the RTC_ISR register. The initialization phase mode is entered when
-INITF is set to 1. It takes around 2 RTCCLK clock cycles (due to clock synchronization).
-3. To generate a 1 Hz clock for the calendar counter, program both the prescaler factors in
-RTC_PRER register.
-4. Load the initial time and date values in the shadow registers (RTC_TR and RTC_DR),
-and configure the time format (12 or 24 hours) through the FMT bit in the RTC_CR
-register.
-5. Exit the initialization mode by clearing the INIT bit. The actual calendar counter value is
-then automatically loaded and the counting restarts after 4 RTCCLK clock cycles.
-When the initialization sequence is complete, the calendar starts counting.
-
- */
-
-void reset_rtc(void)
+/**
+  * @brief RTC Reset Function
+  * @param None
+  * @retval None
+  */
+static void reset_rtc(void)
 {
-/*  uint32_t mask = 0;
-  #ifdef __DEBUG
-      printRegisterToBinary(hrtc.Instance->ISR);
-  #endif
-    //1
-    mask = 0x80;
-    hrtc.Instance->ISR = (hrtc.Instance->ISR | mask);
-    //2
-    mask = 0x40;
-    while( (hrtc.Instance->ISR & mask) == 0 )
-    {
-	#ifdef __DEBUG
-		strcpy(buffer, "Waiting for RTC initialization phase mode to be enabled\r\n");
-		HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
-	#endif
-    }
-    #ifdef __DEBUG
-		strcpy(buffer, "RTC initialization phase mode ENABLED\r\n");
-		HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
-    #endif
-    //3 No prescaling needed ? Clock to RTC is 32768 Hz
-    //hrtc.Instance->PRER = 0;//
-    //4
-/*    hrtc.Instance->TR = ;
-    hrtc.Instance->DR = ;
-    hrtc.Instance->CR = ;*/
-    MX_RTC_Init();
+  uint32_t mask = 0;
 
+  //The following steps are required to unlock the write protection on all the RTC registers except for RTC_TAMPCR, RTC_BKPxR, RTC_OR and RTC_ISR[13:8].
+  // 1. Write ‘0xCA’ into the RTC_WPR register.
+  hrtc.Instance->WPR = 0xCA;
+  // 2. Write ‘0x53’ into the RTC_WPR register.
+  hrtc.Instance->WPR = 0x53;
+  //3. Set INIT bit (7) to 1 in the RTC_ISR register to enter initialization mode. In this mode, the calendar counter is stopped and its value can be updated.
+  mask = 0x80;
+  hrtc.Instance->ISR = (hrtc.Instance->ISR | mask);
+  //4. Poll INITF bit (6) of in the RTC_ISR register. The initialization phase mode is entered when INITF is set to 1. It takes around 2 RTCCLK clock cycles (due to clock synchronization).
+  mask = 0x40;
+  while( (hrtc.Instance->ISR & mask) == 0 )
+  {
+    #ifdef __DEBUG
+	    strcpy(buffer, "Waiting for RTC initialization phase mode to be enabled\r\n");
+	    HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
+	    printRegisterToBinary(hrtc.Instance->ISR);
+	    HAL_Delay(500);
+    #endif
+  }
+  #ifdef __DEBUG
+    strcpy(buffer, "RTC initialization phase mode ENABLED\r\n");
+    HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
+  #endif
+  //5 No prescaling needed ? Clock to RTC is 32768 Hz
+  //6  Load the initial time and date values in the shadow registers (RTC_TR and RTC_DR), and configure the time format (12 or 24 hours) through the FMT bit in the RTC_CR register.
+  hrtc.Instance->TR = 0;
+  hrtc.Instance->DR = 0;
+  //7  Exit the initialization mode by clearing the INIT bit. The actual calendar counter value is then automatically loaded and the counting restarts after 4 RTCCLK clock cycles. When the initialization sequence is complete, the calendar starts counting.
+  mask = 0xFFFFFF7F;
+  hrtc.Instance->ISR = (hrtc.Instance->ISR & mask);
 }
 
 
