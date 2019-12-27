@@ -76,15 +76,15 @@ static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 void uint32tToString(uint32_t reg, char *str);
 void printRegisterToBinary(uint32_t registerToPrint);
-void init_RTC(void);
+void reset_rtc(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 char buffer[BUFSIZE] = "";
-char personDetected = FALSE;
 char registerBinairy[33];
 const char newLine[] = "\r\n";
+finiteState currentState = idle;
 
 /* USER CODE END 0 */
 
@@ -97,7 +97,6 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	uint32_t adcValue = 0;
 	registerBinairy[32] = '\0';
-	//uint32_t testValue = 0xAAAAAAAA;
 
   /* USER CODE END 1 */
   
@@ -134,49 +133,70 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	#ifdef __DEBUG
-		strcpy(buffer, "NUCLEO STM32L432KC initialisation done\r\n");
-		HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
-	#endif
-		HAL_TIM_PWM_Stop(&htim15, TIM_CHANNEL_2);
+  #ifdef __DEBUG
+    strcpy(buffer, "NUCLEO STM32L432KC initialisation done\r\n");
+    HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
+  #endif
+  HAL_TIM_PWM_Stop(&htim15, TIM_CHANNEL_2);
   while (1)
   {
 	  HAL_ADC_Start(&hadc1);
 	  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 	  adcValue = HAL_ADC_GetValue(&hadc1);
 	  HAL_ADC_Stop(&hadc1);
-	  if( hrtc.Instance->TR > LIGHTONTIME)
-	    MX_RTC_Init();
-	  #ifdef __DEBUG
-	    sprintf(buffer, "current time: %ld\r\n", hrtc.Instance->TR);
-	    HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
-	    //printRegisterToBinary(hrtc.Instance->TR);
-	  #endif
-
-	  if(personDetected)
+	  switch(currentState)
 	  {
+	    case idle:
+	      #ifdef __DEBUG
+		strcpy(buffer, "State: idle\r\n");
+		HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
+	      #endif
+	      __NOP(); //TODO wait for interrupt
+	      break;
+	    case turnOffLight:
+	      #ifdef __DEBUG
+		      strcpy(buffer, "State: turnOffLight\r\n");
+		      HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
+	      #endif
+	      htim15.Instance->CCR2 = 0;
+	      HAL_TIM_PWM_Stop(&htim15, TIM_CHANNEL_2);
+	      currentState = idle;
+	      break;
+	    case personDetected:
+	      #ifdef __DEBUG
+		      strcpy(buffer, "State: personDetected\r\n");
+		      HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
+	      #endif
 	      htim15.Instance->CCR2 = PWMPERIOD;
 	      HAL_TIM_PWM_Start(&htim15, TIM_CHANNEL_2);
-	      personDetected = FALSE;
-	  }
-	  else
-	  {
-	    if( htim15.Instance->CCR2 < PWMDEC )
-	      {
-		    //htim15.Instance->CCR2 = PWMPERIOD -1;
-		    htim15.Instance->CCR2 = 0;
-		    HAL_TIM_PWM_Stop(&htim15, TIM_CHANNEL_2);
-	    }
-	    else
-	    {
-		  #ifdef __DEBUG
-		    sprintf(buffer, "CCR2 = %ld\r\n",  htim15.Instance->CCR2);
+	      reset_rtc();
+	      currentState = interval;
+	      break;
+	    case interval:
+	      #ifdef __DEBUG
+		    strcpy(buffer, "State: interval\r\n");
 		    HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
-		  #endif
-		    htim15.Instance->CCR2 -= PWMDEC;
-	    }
+	      #endif
+	      if( hrtc.Instance->TR > LIGHTONTIME)
+		currentState = fadeOut;
+	      break;
+	    case fadeOut:
+	    #ifdef __DEBUG
+		 strcpy(buffer, "State: fadeOut\r\n");
+		 HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
+	    #endif
+	     if( htim15.Instance->CCR2 < PWMDEC )
+	     {
+		 currentState = turnOffLight;
+	     }
+	     else
+	     {
+		 htim15.Instance->CCR2 -= PWMDEC;
+	     }
+	      break;
+	    default:
+	      break;
 	  }
-
 	  HAL_Delay(10); //POLLING speed
     /* USER CODE END WHILE */
 
@@ -422,9 +442,9 @@ When the initialization sequence is complete, the calendar starts counting.
 
  */
 
-void init_RTC(void)
+void reset_rtc(void)
 {
-  uint32_t mask = 0;
+/*  uint32_t mask = 0;
   #ifdef __DEBUG
       printRegisterToBinary(hrtc.Instance->ISR);
   #endif
@@ -450,6 +470,7 @@ void init_RTC(void)
 /*    hrtc.Instance->TR = ;
     hrtc.Instance->DR = ;
     hrtc.Instance->CR = ;*/
+    MX_RTC_Init();
 
 }
 

@@ -37,7 +37,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+  typedef enum {idle, turnOffLight, personDetected, interval, fadeOut} finiteState;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

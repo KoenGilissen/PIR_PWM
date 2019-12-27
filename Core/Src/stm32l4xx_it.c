@@ -66,7 +66,7 @@ extern ADC_HandleTypeDef hadc1;
 /* USER CODE BEGIN EV */
 extern UART_HandleTypeDef huart2;
 extern char buffer[];
-extern char personDetected;
+extern finiteState currentState;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -220,7 +220,7 @@ void ADC1_IRQHandler(void)
     strcpy(buffer, "Hello from Interrupt ADCWD1\r\n");
     HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
   #endif
-  personDetected = TRUE;
+    currentState = personDetected;
   __enable_irq();
   /* USER CODE END ADC1_IRQn 1 */
 }
