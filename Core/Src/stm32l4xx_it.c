@@ -23,6 +23,9 @@
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,7 +35,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
- 
+#define TRUE 1
+#define FALSE 0
+#define __DEBUG
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,6 +47,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+
 
 /* USER CODE END PV */
 
@@ -56,9 +62,11 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-
+extern ADC_HandleTypeDef hadc1;
 /* USER CODE BEGIN EV */
-
+extern UART_HandleTypeDef huart2;
+extern char buffer[];
+extern char personDetected;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -196,6 +204,26 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32l4xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles ADC1 global interrupt.
+  */
+void ADC1_IRQHandler(void)
+{
+  /* USER CODE BEGIN ADC1_IRQn 0 */
+  __disable_irq();
+
+  /* USER CODE END ADC1_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc1);
+  /* USER CODE BEGIN ADC1_IRQn 1 */
+  #ifdef __DEBUG
+    strcpy(buffer, "Hello from Interrupt ADCWD1\r\n");
+    HAL_UART_Transmit(&huart2, (unsigned char*) buffer, strlen(buffer), HAL_MAX_DELAY);
+  #endif
+  personDetected = TRUE;
+  __enable_irq();
+  /* USER CODE END ADC1_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 
